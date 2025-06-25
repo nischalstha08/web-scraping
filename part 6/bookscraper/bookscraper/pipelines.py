@@ -65,3 +65,69 @@ class BookscraperPipeline:
             adapter['stars'] = 5
 
         return item
+
+import mysql.connector 
+
+class SaveToMySQLPipeline:
+    def __init__(self):
+        self.conn = mysql.connector.connect(
+            host = 'localhost',
+            user = 'root',
+            password = 'password',
+            database = 'books'
+        )
+
+        # Create a cursor object to execute SQL queries
+        self.cur = self.conn.cursor()
+
+        ## Create the table if it does not exist
+        self.cur.execute("""
+                CREATE TABLE IF NOT EXISTS books (
+                id int NOT NULL auto_increment,
+                url VARCHAR(255),
+                title text,
+                upc VARCHAR(255),
+                product_type VARCHAR(255),
+                price_excl_tax DECIMAL,
+                price_incl_tax DECIMAL,
+                tax DECIMAL,
+                availability integer,
+                num_reviews integer,
+                stars integer,
+                category VARCHAR(255),
+                description text,
+                PRIMARY KEY (id)
+            )
+        """)
+
+    def process_item(self, item, spider):
+
+        ##define insert query
+        self.cur.execute(""" insert into books (
+            url, title, upc, product_type, price_excl_tax, price_incl_tax,
+            tax, availability, num_reviews, stars, category, description
+        ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+            (
+                item['url'],
+                item['title'],
+                item['upc'],
+                item['product_type'],
+                item['price_excl_tax'],
+                item['price_incl_tax'],
+                item['tax'],
+                item['availability'],
+                item['num_reviews'],
+                item['stars'],
+                item['category'],
+                str(item['description'][0])
+            ))
+        
+        ##Execute the query into database
+        self.conn.commit()
+        return item
+    
+    def close_spider(self, spider):
+        ##Close the cursor and connection
+        self.cur.close()
+        self.conn.close()
+        print("Connection to MySQL closed")
